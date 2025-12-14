@@ -46,9 +46,9 @@
     }
 
     .header-inner {
-      max-width: 1120px;
+      max-width: 100%;
       margin: 0 auto;
-      padding: 12px 16px;
+      padding: 12px 24px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -121,9 +121,9 @@
 
     main {
       flex: 1;
-      max-width: 1120px;
+      max-width: 100%;
       margin: 0 auto;
-      padding: 16px;
+      padding: 16px 24px;
       display: flex;
       flex-direction: column;
       gap: 16px;
@@ -290,15 +290,9 @@
     }
 
     .output-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      display: flex;
+      flex-direction: column;
       gap: 10px;
-    }
-
-    @media (max-width: 840px) {
-      .output-grid {
-        grid-template-columns: minmax(0, 1fr);
-      }
     }
 
     .output-card {
@@ -354,9 +348,9 @@
     }
 
     footer {
-      max-width: 1120px;
+      max-width: 100%;
       margin: 0 auto;
-      padding: 0 16px 16px;
+      padding: 0 24px 16px;
       font-size: 11px;
       color: var(--muted);
       display: flex;
@@ -462,6 +456,10 @@
                 <strong>Expiry:</strong>
                 <span id="expMeta" class="exp-none">not set</span>
               </span>
+              <span class="pill">
+                <strong>Time:</strong>
+                <span id="expTimeMeta" class="exp-none">–</span>
+              </span>
             </div>
           </div>
 
@@ -556,15 +554,41 @@
     }
 
     function formatExp(exp) {
-      if (typeof exp !== "number") return { text: "not set", cls: "exp-none" };
+      if (typeof exp !== "number") return { text: "not set", cls: "exp-none", timeText: "–", timeCls: "exp-none" };
       var nowSeconds = Math.floor(Date.now() / 1000);
       var date = new Date(exp * 1000);
       var iso = date.toISOString().replace(".000", "");
       var expired = exp < nowSeconds;
+      var diffSeconds = Math.abs(exp - nowSeconds);
+      
+      var timeText;
+      var timeCls;
+      
+      if (expired) {
+        timeText = "Expired";
+        timeCls = "exp-expired";
+      } else {
+        var days = Math.floor(diffSeconds / 86400);
+        var hours = Math.floor((diffSeconds % 86400) / 3600);
+        var minutes = Math.floor((diffSeconds % 3600) / 60);
+        
+        if (days > 0) {
+          timeText = "Expires in " + days + (days === 1 ? " day" : " days");
+        } else if (hours > 0) {
+          timeText = "Expires in " + hours + (hours === 1 ? " hour" : " hours");
+        } else if (minutes > 0) {
+          timeText = "Expires in " + minutes + (minutes === 1 ? " min" : " mins");
+        } else {
+          timeText = "Expires in " + diffSeconds + " secs";
+        }
+        timeCls = "exp-ok";
+      }
 
       return {
         text: (expired ? "expired " : "valid ") + " · " + iso,
-        cls: expired ? "exp-expired" : "exp-ok"
+        cls: expired ? "exp-expired" : "exp-ok",
+        timeText: timeText,
+        timeCls: timeCls
       };
     }
 
@@ -578,6 +602,7 @@
       var algMeta = document.getElementById("algMeta");
       var typMeta = document.getElementById("typMeta");
       var expMeta = document.getElementById("expMeta");
+      var expTimeMeta = document.getElementById("expTimeMeta");
       var headerHint = document.getElementById("headerHint");
       var payloadHint = document.getElementById("payloadHint");
 
@@ -591,6 +616,8 @@
         typMeta.textContent = "–";
         expMeta.textContent = "not set";
         expMeta.className = "exp-none";
+        expTimeMeta.textContent = "–";
+        expTimeMeta.className = "exp-none";
         headerHint.textContent = "";
         payloadHint.textContent = "";
       }
@@ -626,6 +653,8 @@
           var expInfo = formatExp(decoded.payload.exp);
           expMeta.textContent = expInfo.text;
           expMeta.className = expInfo.cls;
+          expTimeMeta.textContent = expInfo.timeText;
+          expTimeMeta.className = expInfo.timeCls;
         } catch (e) {
           headerEl.textContent = "{}";
           payloadEl.textContent = "{}";
@@ -635,6 +664,8 @@
           typMeta.textContent = "–";
           expMeta.textContent = "not set";
           expMeta.className = "exp-none";
+          expTimeMeta.textContent = "–";
+          expTimeMeta.className = "exp-none";
           headerHint.textContent = "";
           payloadHint.textContent = "";
           errorEl.textContent = e.message;
